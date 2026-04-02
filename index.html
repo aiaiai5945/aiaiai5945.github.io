@@ -40,15 +40,28 @@
         </div>
 
         <!-- Stats Bar -->
-        <div class="stats">
+        <div class="stats" style="display: flex; justify-content: space-between; align-items: center;">
             <span class="stats__count">共 <strong id="fundCount">0</strong> 只基金</span>
-            <button class="stats__refresh" id="refreshBtn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                刷新
-            </button>
+            <div style="display: flex; gap: 8px;">
+                <button class="stats__refresh" id="sortBtn" style="background: none; border: none; display: flex; align-items: center; gap: 4px; color: var(--text-muted); cursor: pointer; font-size: 14px;">
+                    <svg id="sortIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span id="sortText">默认排序</span>
+                </button>
+                <button class="stats__refresh" id="refreshBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    刷新
+                </button>
+            </div>
         </div>
 
         <!-- Fund List -->

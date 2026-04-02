@@ -9,7 +9,8 @@ const App = {
         fundData: [],     // 基金实时数据
         sha: null,        // GitHub 文件 SHA
         isLoading: false,
-        searchTimeout: null
+        searchTimeout: null,
+        sortMode: 0       // 0: 默认预设排序, 1: 涨跌幅从高到低, 2: 涨跌幅从低到高
     },
 
     // DOM 元素
@@ -37,7 +38,9 @@ const App = {
             searchResults: document.getElementById('searchResults'),
             clearSearch: document.getElementById('clearSearch'),
             refreshBtn: document.getElementById('refreshBtn'),
-            refreshBtn: document.getElementById('refreshBtn'),
+            sortBtn: document.getElementById('sortBtn'),
+            sortIcon: document.getElementById('sortIcon'),
+            sortText: document.getElementById('sortText'),
             toast: document.getElementById('toast')
         };
     },
@@ -57,8 +60,74 @@ const App = {
             }
         });
 
-        // 刷新
+        // 刷新和排序
         this.elements.refreshBtn.addEventListener('click', () => this.refreshData());
+        this.elements.sortBtn.addEventListener('click', () => this.toggleSort());
+
+        // 拖拽排序逻辑
+        let dragSourceCode = null;
+
+        this.elements.fundList.addEventListener('dragstart', (e) => {
+            const card = e.target.closest('.fund-card');
+            if (card) {
+                // 如果不是默认排序，尽量保持原来的排序交互，或者可以不允许拖拽
+                // 这里我们允许拖拽，并在拖拽后切换回默认排序
+                dragSourceCode = card.dataset.code;
+                card.style.opacity = '0.5';
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragSourceCode);
+            }
+        });
+
+        this.elements.fundList.addEventListener('dragend', (e) => {
+            const card = e.target.closest('.fund-card');
+            if (card) {
+                card.style.opacity = '1';
+            }
+        });
+
+        this.elements.fundList.addEventListener('dragover', (e) => {
+            const card = e.target.closest('.fund-card');
+            if (card) {
+                e.preventDefault(); // 必需，否则无法触发 drop
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+
+        this.elements.fundList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const card = e.target.closest('.fund-card');
+            if (!card || !dragSourceCode) return;
+            
+            const targetCode = card.dataset.code;
+            if (dragSourceCode === targetCode) return;
+
+            const sourceIndex = this.state.funds.indexOf(dragSourceCode);
+            const targetIndex = this.state.funds.indexOf(targetCode);
+
+            if (sourceIndex !== -1 && targetIndex !== -1) {
+                // 在数组中移动元素
+                this.state.funds.splice(sourceIndex, 1);
+                this.state.funds.splice(targetIndex, 0, dragSourceCode);
+                this.saveToLocal();
+                
+                if (window.GitHubAPI && GitHubAPI.isConfigured()) {
+                    this.syncToGitHub(true);
+                }
+
+                // 拖拽后自动切换为预设排序
+                this.state.sortMode = 0;
+                this.render();
+            }
+        });
+    },
+
+    /**
+     * 切换排序模式
+     */
+    toggleSort() {
+        this.state.sortMode = (this.state.sortMode + 1) % 3;
+        this.render();
     },
 
     /**
@@ -76,11 +145,11 @@ const App = {
                     this.state.sha = sha;
                 } catch (error) {
                     console.warn('从 GitHub 加载失败，使用本地数据:', error);
-                    this.loadFromLocal();
+                    await this.loadFromLocal();
                 }
             } else {
-                // 从 localStorage 加载
-                this.loadFromLocal();
+                // 从 localStorage 或 data/funds.json 加载
+                await this.loadFromLocal();
             }
 
             // 获取实时数据
@@ -98,15 +167,32 @@ const App = {
     },
 
     /**
-     * 从 localStorage 加载
+     * 从 localStorage 加载数据。如果没有，尝试从本地文件系统加载
      */
-    loadFromLocal() {
+    async loadFromLocal() {
         const saved = localStorage.getItem('fund_list');
         if (saved) {
             try {
                 this.state.funds = JSON.parse(saved);
             } catch (e) {
                 this.state.funds = [];
+            }
+        }
+
+        // 如果 localStorage 里没有数据，尝试读取 data/funds.json 的初始数据
+        if (this.state.funds.length === 0) {
+            try {
+                const response = await fetch('data/funds.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.funds && Array.isArray(data.funds)) {
+                        this.state.funds = data.funds;
+                        this.saveToLocal(); // 保存到 localStorage 中，供下次使用
+                        console.log('已从 data/funds.json 加载初始基金列表', data.funds);
+                    }
+                }
+            } catch (e) {
+                console.warn('无法读取初始数据配置 (data/funds.json):', e);
             }
         }
     },
@@ -282,19 +368,54 @@ const App = {
 
         this.elements.empty.style.display = 'none';
 
-        // 按涨跌幅排序
-        const sortedData = [...this.state.fundData].sort((a, b) =>
-            (b.estimateChange || 0) - (a.estimateChange || 0)
-        );
+        // 更新排序图标和文字
+        if (this.state.sortMode === 0) {
+            this.elements.sortText.textContent = '默认排序';
+            this.elements.sortIcon.innerHTML = `
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            `;
+        } else if (this.state.sortMode === 1) {
+            this.elements.sortText.textContent = '高到低';
+            this.elements.sortIcon.innerHTML = `
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+            `;
+        } else {
+            this.elements.sortText.textContent = '低到高';
+            this.elements.sortIcon.innerHTML = `
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+            `;
+        }
 
-        const html = sortedData.map(fund => {
+        // 根据排序模式排序
+        const sortedData = [...this.state.fundData].sort((a, b) => {
+            if (this.state.sortMode === 0) {
+                // 按 this.state.funds(用户预设) 的顺序排序
+                return this.state.funds.indexOf(a.code) - this.state.funds.indexOf(b.code);
+            } else if (this.state.sortMode === 1) {
+                // 从高到低
+                return (b.estimateChange || 0) - (a.estimateChange || 0);
+            } else {
+                // 从低到高
+                return (a.estimateChange || 0) - (b.estimateChange || 0);
+            }
+        });
+
+        const html = sortedData.map((fund, index) => {
             const change = fund.estimateChange || 0;
             const changeClass = change >= 0 ? 'rise' : 'fall';
             const changeText = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
 
+            // 在自选默认排序模式下可能需要显示索引或者允许拖拽
             return `
-                <div class="fund-card ${changeClass}" data-code="${fund.code}">
-                    <div class="fund-card__info">
+                <div class="fund-card ${changeClass}" data-code="${fund.code}" draggable="true">
+                    <div class="fund-card__info" style="cursor: move;">
                         <div class="fund-card__name">${fund.name}</div>
                         <div class="fund-card__code">${fund.code}</div>
                     </div>

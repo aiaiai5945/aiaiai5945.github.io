@@ -325,7 +325,7 @@
     function fetchFundData(code) {
         return new Promise((resolve) => {
             const script = document.createElement('script');
-            script.src = `http://fund.eastmoney.com/pingzhongdata/${code}.js?v=${Date.now()}`;
+            script.src = `https://fund.eastmoney.com/pingzhongdata/${code}.js?v=${Date.now()}`;
             
             // Generate a unique cleanup key
             const cleanupKey = `cleanup_${code}_${Date.now()}`;

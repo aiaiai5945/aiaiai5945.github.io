@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>热门主动基金本周利益排名</title>
+<style>
+  :root {
+    --bg: #050503;
+    --panel: rgba(10, 10, 8, 0.72);
+    --row: rgba(255, 255, 255, 0.055);
+    --row-strong: rgba(255, 255, 255, 0.09);
+    --gold: #f3d39b;
+    --gold-strong: #ffe6b9;
+    --text: #fffdf7;
+    --muted: rgba(255, 237, 198, 0.78);
+    --shadow: 0 26px 80px rgba(0, 0, 0, 0.68);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Arial Black", "Impact", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 8% 3%, rgba(255, 209, 132, 0.22), transparent 18%),
+      radial-gradient(circle at 92% 2%, rgba(255, 209, 132, 0.18), transparent 20%),
+      radial-gradient(circle at 50% 55%, rgba(108, 85, 46, 0.16), transparent 34%),
+      linear-gradient(180deg, #090907 0%, #030302 100%);
+    overflow-x: hidden;
+  }
+
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  body::before {
+    background-image:
+      radial-gradient(circle, rgba(255, 221, 158, 0.7) 0 1px, transparent 1.5px),
+      radial-gradient(circle, rgba(255, 221, 158, 0.36) 0 1px, transparent 1.4px);
+    background-size: 34px 34px, 58px 58px;
+    background-position: 0 0, 18px 12px;
+    opacity: 0.22;
+    mask-image: radial-gradient(circle at top, #000 0 24%, transparent 48%);
+  }
+
+  body::after {
+    background:
+      linear-gradient(90deg, transparent 0 82%, rgba(255, 219, 153, 0.16) 82% 82.15%, transparent 82.15%),
+      linear-gradient(8deg, transparent 0 55%, rgba(255, 219, 153, 0.14) 55% 55.12%, transparent 55.12%);
+    opacity: 0.42;
+  }
+
+  .page {
+    position: relative;
+    width: min(1360px, calc(100vw - 48px));
+    margin: 0 auto;
+    padding: 86px 0 92px;
+  }
+
+  .poster-title {
+    margin: 0;
+    text-align: center;
+    color: var(--gold-strong);
+    font-size: clamp(42px, 7vw, 100px);
+    line-height: 1.04;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-shadow: 0 8px 26px rgba(0, 0, 0, 0.8), 0 0 28px rgba(255, 218, 158, 0.22);
+  }
+
+  .data-time {
+    margin: 18px 0 0;
+    text-align: center;
+    color: var(--gold-strong);
+    font-size: clamp(20px, 2.8vw, 34px);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-shadow: 0 5px 18px rgba(0, 0, 0, 0.75);
+  }
+
+  .table-card {
+    position: relative;
+    border-radius: 22px;
+    background: rgba(0, 0, 0, 0.18);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-top: 40px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    min-width: 1000px;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  thead tr {
+    background: linear-gradient(90deg, rgba(66, 55, 42, 0.82), rgba(38, 31, 24, 0.9));
+  }
+
+  thead th {
+    padding: 24px 18px;
+    color: var(--gold);
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 900;
+    text-align: left;
+    white-space: nowrap;
+    text-shadow: 0 3px 14px rgba(0, 0, 0, 0.7);
+  }
+
+  tbody tr:nth-child(odd) {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.14);
+  }
+
+  tbody td {
+    padding: 22px 18px;
+    color: #fffdf8;
+    font-size: 38px;
+    line-height: 1.06;
+    font-weight: 900;
+    text-align: left;
+    white-space: nowrap;
+    text-shadow: 0 5px 18px rgba(0, 0, 0, 0.72);
+  }
+
+  .col-rank { width: 150px; text-align: center; }
+  .col-name { width: 450px; }
+  .col-day { width: 180px; }
+  .col-total { width: 180px; }
+
+  .rank-chip {
+    display: inline-flex;
+    min-width: 74px;
+    justify-content: center;
+    color: var(--gold);
+    font-size: 38px;
+    font-weight: 900;
+  }
+
+  .rank-chip.is-top1,
+  .rank-chip.is-top2,
+  .rank-chip.is-top3 {
+    width: 86px;
+    height: 70px;
+    overflow: hidden;
+    color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+  }
+
+  .rank-chip.is-top1 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 80'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23fff1b8'/%3E%3Cstop offset='.45' stop-color='%23f4c65f'/%3E%3Cstop offset='1' stop-color='%23b7781d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M8 66h94l-8-42-21 20L55 8 37 44 16 24z'/%3E%3Cellipse cx='55' cy='66' rx='45' ry='8' fill='%23f7d47a'/%3E%3Ccircle cx='16' cy='24' r='5' fill='%23fff1b8'/%3E%3Ccircle cx='55' cy='8' r='5' fill='%23fff1b8'/%3E%3Ccircle cx='94' cy='24' r='5' fill='%23fff1b8'/%3E%3C/svg%3E");
+  }
+
+  .rank-chip.is-top2 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 80'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23ffffff'/%3E%3Cstop offset='.48' stop-color='%23cfd8dc'/%3E%3Cstop offset='1' stop-color='%237b8790'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M8 66h94l-8-42-21 20L55 8 37 44 16 24z'/%3E%3Cellipse cx='55' cy='66' rx='45' ry='8' fill='%23e9eef1'/%3E%3Ccircle cx='16' cy='24' r='5' fill='%23ffffff'/%3E%3Ccircle cx='55' cy='8' r='5' fill='%23ffffff'/%3E%3Ccircle cx='94' cy='24' r='5' fill='%23ffffff'/%3E%3C/svg%3E");
+  }
+
+  .rank-chip.is-top3 {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 80'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23ffd9bc'/%3E%3Cstop offset='.48' stop-color='%23c68155'/%3E%3Cstop offset='1' stop-color='%23834d2f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M8 66h94l-8-42-21 20L55 8 37 44 16 24z'/%3E%3Cellipse cx='55' cy='66' rx='45' ry='8' fill='%23d99a72'/%3E%3Ccircle cx='16' cy='24' r='5' fill='%23ffd9bc'/%3E%3Ccircle cx='55' cy='8' r='5' fill='%23ffd9bc'/%3E%3Ccircle cx='94' cy='24' r='5' fill='%23ffd9bc'/%3E%3C/svg%3E");
+  }
+
+  .metric {
+    color: #fffdf8;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-positive { color: #ff4d5f; }
+  .metric-negative { color: #2ed08f; }
+  .metric-zero { color: #fffdf8; }
+
+  @media (max-width: 860px) {
+    .page {
+      width: min(100vw - 20px, 1360px);
+      padding: 42px 0 56px;
+    }
+    .poster-title { font-size: clamp(34px, 12vw, 64px); }
+    .data-time { margin-top: 14px; font-size: clamp(16px, 5vw, 24px); }
+    thead th, tbody td { padding: 18px 14px; font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+  <div style="position: absolute; top: 20px; left: 20px; z-index: 10;">
+      <a href="index.html" style="color: var(--gold-strong); text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 16px; background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(4px);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          返回自选
+      </a>
+  </div>
+
+  <main class="page">
+    <h1 class="poster-title">热门主动🐔(C类)周利益排名</h1>
+    <div class="data-time" id="dataTime">数据加载中...</div>
+
+    <section class="table-card" aria-label="热门主动基金本周收益表格">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="tableHeader">
+              <th class="col-rank">排名</th>
+              <th class="col-name">基金名称</th>
+              <th class="col-total">周总计</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="3" style="text-align: center; color: var(--gold);">正在获取最新净值数据...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const fundCodes = [
+        "014002", "012922", "002891", "021842", "008254", "018147",
+        "021277", "016668", "024239", "018230", "016665", "018036",
+        "017731", "015202", "022184", "017204", "000043"
+    ];
+
+    // Determine the natural week bounds (Mon to Fri) for the current date
+    const now = new Date();
+    // getDay() is 0 for Sunday, 1 for Monday. We want Monday=1 ... Sunday=7
+    let dayOfWeek = now.getDay() || 7; 
+    
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dayOfWeek + 1);
+    monday.setHours(0,0,0,0);
+
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    friday.setHours(23,59,59,999);
+
+    const todayStart = new Date(now);
+    todayStart.setHours(0,0,0,0);
+
+    const daysInWeek = [];
+    for (let i = 0; i < 5; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        // 只显示今天之前的日期
+        if (d.getTime() < todayStart.getTime()) {
+            daysInWeek.push(d);
+        }
+    }
+
+    function getMD(date) {
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+
+    // Render Table Header dynamically
+    const tableHeader = document.getElementById('tableHeader');
+    let dayHeadersHtml = `<th class="col-rank">排名</th><th class="col-name">基金名称</th>`;
+    daysInWeek.forEach(d => {
+        dayHeadersHtml += `<th class="col-day">${getMD(d)}</th>`;
+    });
+    dayHeadersHtml += `<th class="col-total">周总计</th>`;
+    tableHeader.innerHTML = dayHeadersHtml;
+
+    document.getElementById('dataTime').innerText = `数据时间：${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+
+    let fundNameMap = {};
+
+    async function loadFundNames() {
+        try {
+            // 如果是通过 file:// 协议打开可能会跨域失败，建议通过 Live Server 运行
+            const response = await fetch('data/fund_name.txt');
+            if (response.ok) {
+                const text = await response.text();
+                const lines = text.split('\n');
+                lines.forEach(line => {
+                    const parts = line.split('\t');
+                    if (parts.length >= 2) {
+                        fundNameMap[parts[0].trim()] = parts[1].trim();
+                    }
+                });
+            } else {
+                // 如果 fetch 失败，使用内置 fallback
+                console.warn("读取 fund_name.txt 失败，使用内置默认名称。");
+                fundNameMap = {
+                    "021277": "广发全球精选", "016665": "天弘全球高端制造混合", "021842": "国富全球科技互联混合",
+                    "024239": "华夏全球科技先锋混合", "016668": "景顺长城全球半导体芯片", "018147": "建信新兴市场混合",
+                    "018036": "长城全球新能源车", "015202": "汇添富全球移动互联混合", "017731": "嘉实全球产业升级",
+                    "018230": "易方达全球优质企业混合", "000043": "嘉实美国成长", "017204": "华宝海外科技",
+                    "022184": "富国全球科技互联网", "012922": "易方达全球成长精选混合", "014002": "浦银安盛全球智能科技",
+                    "002891": "华夏移动互联混合", "008254": "华宝致远混合"
+                };
+            }
+        } catch (e) {
+            console.error('Failed to load fund names:', e);
+            fundNameMap = {
+                "021277": "广发全球精选", "016665": "天弘全球高端制造混合", "021842": "国富全球科技互联混合",
+                "024239": "华夏全球科技先锋混合", "016668": "景顺长城全球半导体芯片", "018147": "建信新兴市场混合",
+                "018036": "长城全球新能源车", "015202": "汇添富全球移动互联混合", "017731": "嘉实全球产业升级",
+                "018230": "易方达全球优质企业混合", "000043": "嘉实美国成长", "017204": "华宝海外科技",
+                "022184": "富国全球科技互联网", "012922": "易方达全球成长精选混合", "014002": "浦银安盛全球智能科技",
+                "002891": "华夏移动互联混合", "008254": "华宝致远混合"
+            };
+        }
+    }
+
+    function fetchFundData(code) {
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = `http://fund.eastmoney.com/pingzhongdata/${code}.js?v=${Date.now()}`;
+            
+            // Generate a unique cleanup key
+            const cleanupKey = `cleanup_${code}_${Date.now()}`;
+            
+            script.onload = () => {
+                if (typeof Data_netWorthTrend !== 'undefined' && typeof fS_name !== 'undefined') {
+                    const result = processFundData(code, fS_name, Data_netWorthTrend);
+                    resolve(result);
+                } else {
+                    resolve({ code, name: code, days: {}, total: 0 });
+                }
+                document.head.removeChild(script);
+            };
+            
+            script.onerror = () => {
+                resolve({ code, name: code, days: {}, total: 0 });
+                document.head.removeChild(script);
+            };
+            
+            document.head.appendChild(script);
+        });
+    }
+
+    function processFundData(code, name, trendData) {
+        const lastFriday = new Date(monday);
+        lastFriday.setDate(monday.getDate() - 3); 
+        lastFriday.setHours(0,0,0,0);
+        
+        const daysData = {};
+        let lastFriNetWorth = null;
+        let latestNetWorth = null;
+        
+        for (let i = trendData.length - 1; i >= 0; i--) {
+            const point = trendData[i];
+            const pointDate = new Date(point.x);
+            pointDate.setHours(0,0,0,0);
+            
+            if (pointDate >= monday && pointDate <= friday) {
+                daysData[pointDate.getTime()] = {
+                    y: point.y,
+                    equityReturn: point.equityReturn
+                };
+                if (!latestNetWorth) {
+                    latestNetWorth = point.y;
+                }
+            }
+            
+            if (pointDate <= lastFriday && !lastFriNetWorth) {
+                lastFriNetWorth = point.y;
+                break;
+            }
+        }
+        
+        let weeklyTotal = 0;
+        if (latestNetWorth && lastFriNetWorth) {
+            weeklyTotal = (latestNetWorth / lastFriNetWorth - 1) * 100;
+        } else {
+            weeklyTotal = Object.values(daysData).reduce((sum, data) => sum + (parseFloat(data.equityReturn) || 0), 0);
+        }
+        
+        const standardName = fundNameMap[code] || name;
+        
+        return {
+            code,
+            name: standardName,
+            days: daysData,
+            total: weeklyTotal
+        };
+    }
+
+    function formatMetric(val) {
+        if (val === undefined || val === null || isNaN(val) || val === '') return '-';
+        const num = parseFloat(val);
+        if (num > 0) return `<span class="metric metric-positive">+${num.toFixed(2)}%</span>`;
+        if (num < 0) return `<span class="metric metric-negative">${num.toFixed(2)}%</span>`;
+        return `<span class="metric metric-zero">0.00%</span>`;
+    }
+
+    function renderTable(results) {
+        const tbody = document.getElementById('tableBody');
+        let html = '';
+        results.forEach((fund, index) => {
+            const rank = index + 1;
+            let rankHtml = `<span class="rank-chip">${rank}</span>`;
+            if (rank === 1) rankHtml = `<span class="rank-chip is-top1">01</span>`;
+            else if (rank === 2) rankHtml = `<span class="rank-chip is-top2">02</span>`;
+            else if (rank === 3) rankHtml = `<span class="rank-chip is-top3">03</span>`;
+            
+            let rowHtml = `<tr>
+                <td class="col-rank">${rankHtml}</td>
+                <td class="col-name" style="white-space: normal; word-break: keep-all;">${fund.name}</td>`;
+                
+            daysInWeek.forEach(d => {
+                const time = d.getTime();
+                const dayData = fund.days[time];
+                rowHtml += `<td>${dayData ? formatMetric(dayData.equityReturn) : '-'}</td>`;
+            });
+            
+            rowHtml += `<td>${formatMetric(fund.total)}</td></tr>`;
+            html += rowHtml;
+        });
+        tbody.innerHTML = html;
+    }
+
+    // Execute fetches sequentially to prevent overriding globals by concurrent JSONP requests
+    async function loadAllFunds() {
+        await loadFundNames();
+        const results = [];
+        for (const code of fundCodes) {
+            const res = await fetchFundData(code);
+            results.push(res);
+        }
+        results.sort((a, b) => b.total - a.total);
+        renderTable(results);
+    }
+
+    loadAllFunds();
+
+  </script>
+</body>
+</html>

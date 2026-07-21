@@ -147,8 +147,10 @@ const App = {
                     console.warn('从 GitHub 加载失败，使用本地数据:', error);
                     await this.loadFromLocal();
                 }
-            } else {
-                // 从 localStorage 或 data/funds.json 加载
+            }
+
+            // 如果未能从 GitHub 载入有效列表，从本地/默认数据加载
+            if (!this.state.funds || this.state.funds.length === 0) {
                 await this.loadFromLocal();
             }
 
@@ -395,24 +397,38 @@ const App = {
 
         // 根据排序模式排序
         const sortedData = [...this.state.fundData].sort((a, b) => {
+            const hasA = a.estimateChange !== null && a.estimateChange !== undefined && !isNaN(a.estimateChange);
+            const hasB = b.estimateChange !== null && b.estimateChange !== undefined && !isNaN(b.estimateChange);
+
             if (this.state.sortMode === 0) {
                 // 按 this.state.funds(用户预设) 的顺序排序
                 return this.state.funds.indexOf(a.code) - this.state.funds.indexOf(b.code);
             } else if (this.state.sortMode === 1) {
-                // 从高到低
-                return (b.estimateChange || 0) - (a.estimateChange || 0);
+                // 从高到低，无估值排在最后
+                if (!hasA && !hasB) return 0;
+                if (!hasA) return 1;
+                if (!hasB) return -1;
+                return b.estimateChange - a.estimateChange;
             } else {
-                // 从低到高
-                return (a.estimateChange || 0) - (b.estimateChange || 0);
+                // 从低到高，无估值排在最后
+                if (!hasA && !hasB) return 0;
+                if (!hasA) return 1;
+                if (!hasB) return -1;
+                return a.estimateChange - b.estimateChange;
             }
         });
 
         const html = sortedData.map((fund, index) => {
-            const change = fund.estimateChange || 0;
-            const changeClass = change >= 0 ? 'rise' : 'fall';
-            const changeText = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
+            const change = fund.estimateChange;
+            const hasChange = change !== null && change !== undefined && !isNaN(change);
+            let changeClass = 'neutral';
+            let changeText = '暂无';
 
-            // 在自选默认排序模式下可能需要显示索引或者允许拖拽
+            if (hasChange) {
+                changeClass = change >= 0 ? 'rise' : 'fall';
+                changeText = change >= 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
+            }
+
             return `
                 <div class="fund-card ${changeClass}" data-code="${fund.code}" draggable="true">
                     <div class="fund-card__info" style="cursor: move;">

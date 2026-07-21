@@ -350,6 +350,14 @@ button {
     --card-accent: var(--fall);
 }
 
+.fund-card.neutral {
+    --card-accent: var(--text-muted);
+}
+
+.fund-card.neutral .fund-card__estimate-change {
+    color: var(--text-muted);
+}
+
 /* Column 1: Name & Code */
 .fund-card__info {
     flex: 2.5;
